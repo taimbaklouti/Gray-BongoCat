@@ -1,3 +1,65 @@
+/* ============================================================
+   BONGO CAT — charte graphique "Love Letter" pixel art
+   ============================================================ */
+
+@font-face {
+  font-family: 'Press Start 2P';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('../fonts/press-start-2p-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Pixelify Sans';
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url('../fonts/pixelify-sans-latin.woff2') format('woff2');
+}
+
+:root {
+  /* ---------- palette "Love Letter" ---------- */
+  --pixel-cream: #f7efe3;
+  /* fond général */
+  --pixel-coral: #d97b73;
+  /* bordures / cadre fenêtre */
+  --pixel-coral-dk: #b9554d;
+  /* ligne de cadre plus sombre */
+  --pixel-pink: #f0b6c6;
+  /* barre de titre */
+  --pixel-pink-lt: #f7d8e0;
+  /* bandeau clair */
+  --pixel-gingham: #f9dee6;
+  /* base du motif quadrillé */
+  --pixel-gingham-2: rgba(206, 118, 142, 0.28);
+  --pixel-maroon: #7a2230;
+  /* texte pixel foncé */
+  --pixel-red: #e23b4e;
+  /* cœurs */
+  --pixel-red-dk: #b22a3b;
+  --pixel-paper: #fdf4ef;
+  /* boutons */
+
+  /* ---------- polices ---------- */
+  --font-pixel: 'Press Start 2P', monospace;
+  --font-body: 'Pixelify Sans', 'Press Start 2P', monospace;
+}
+
+/* ---------- rendu net / pixellisé ---------- */
+html,
+body,
+#app {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+img,
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 html {
   --uno: select-none overscroll-none antialiased;
 
@@ -5,6 +67,9 @@ html {
 
   body {
     --uno: text-3.5 transition-opacity-300;
+
+    font-family: var(--font-body);
+    color: var(--pixel-maroon);
   }
 
   &.dark {
@@ -17,5 +82,90 @@ html {
 
   button {
     outline: none !important;
+  }
+}
+
+/* ---------- bordure pixel art réutilisable ---------- */
+.pixel-frame {
+  border: 4px solid var(--pixel-coral);
+  border-radius: 10px;
+  box-shadow:
+    inset 0 0 0 2px var(--pixel-pink-lt),
+    0 0 0 2px var(--pixel-coral-dk);
+}
+
+/* ---------- fond à motif quadrillé rose pastel (pink gingham) ---------- */
+.pixel-gingham {
+  background-color: var(--pixel-gingham);
+  background-image:
+    repeating-linear-gradient(0deg, transparent 0 9px, var(--pixel-gingham-2) 9px 18px),
+    repeating-linear-gradient(90deg, transparent 0 9px, var(--pixel-gingham-2) 9px 18px);
+}
+
+/* ---------- barre de titre pixel art ---------- */
+.pixel-titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--pixel-pink);
+  border-bottom: 4px solid var(--pixel-coral);
+
+  &__name {
+    font-family: var(--font-pixel);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: var(--pixel-maroon);
+    user-select: none;
+  }
+
+  &__btns {
+    display: flex;
+    gap: 5px;
+  }
+}
+
+.pixel-winbtn {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  line-height: 1;
+  color: var(--pixel-maroon);
+  background: var(--pixel-paper);
+  border: 2px solid var(--pixel-coral);
+  border-radius: 3px;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    background 0.12s ease,
+    color 0.12s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(1px);
+  }
+
+  &--close:hover {
+    background: var(--pixel-red);
+    color: #fff;
+  }
+}
+
+/* ---------- petits symboles pixel (cœurs / étoiles) ---------- */
+.pixel-deco {
+  font-family: var(--font-pixel);
+  font-size: 10px;
+  color: var(--pixel-red);
+  user-select: none;
+
+  &--star {
+    color: #f5c26b;
   }
 }

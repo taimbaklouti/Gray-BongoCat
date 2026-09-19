@@ -21,3 +21,8 @@ target
 *.njsproj
 *.sln
 *.sw?
+
+# Local reference material / temp files
+love-letter-main
+.~lock.*
+package-lock.json

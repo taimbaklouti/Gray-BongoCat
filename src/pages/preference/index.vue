@@ -4,12 +4,12 @@ import { Flex, Spin } from 'antdv-next'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import TitleBar from '@/components/title-bar/index.vue'
 import UpdateApp from '@/components/update-app/index.vue'
 import { useTray } from '@/composables/useTray'
 import { useAppStore } from '@/stores/app'
 import { useGeneralStore } from '@/stores/general'
 import { useModelStore } from '@/stores/model'
-import { isMac } from '@/utils/platform'
 
 import About from './components/about/index.vue'
 import Cat from './components/cat/index.vue'
@@ -64,6 +64,11 @@ const menus = computed(() => [
 </script>
 
 <template>
+  <TitleBar
+    class="z-10"
+    :title="appStore.name"
+  />
+
   <Spin
     class="max-h-unset!"
     :description="t('pages.main.hints.switching')"
@@ -72,14 +77,13 @@ const menus = computed(() => [
     :spinning="!modelStore.modelReady"
   />
 
-  <Flex class="h-screen">
+  <Flex class="pixel-gingham pixel-frame h-[calc(100vh-40px)] overflow-hidden">
     <div
-      class="h-full w-30 flex flex-col items-center gap-4 overflow-auto bg-gradient-from-blue-1 bg-gradient-to-black/1 bg-gradient-linear dark:bg-none"
-      :class="[isMac ? 'pt-8' : 'pt-4']"
+      class="pixel-gingham h-full w-30 flex flex-col items-center gap-4 overflow-auto b-r-4 b-[var(--pixel-coral)] b-solid pt-4"
       data-tauri-drag-region
     >
       <div class="flex flex-col items-center gap-2">
-        <div class="b-1 b-solid b-border-sec rounded-2xl">
+        <div class="b-1 rounded-2xl b-solid b-border-sec">
           <img
             class="size-15"
             data-tauri-drag-region
@@ -112,7 +116,7 @@ const menus = computed(() => [
       v-for="(item, index) in menus"
       v-show="current === index"
       :key="item.key"
-      class="flex-1 overflow-auto bg-[--ant-color-fill-quaternary] p-4 dark:bg-container"
+      class="pixel-gingham flex-1 overflow-auto p-4"
       data-tauri-drag-region
     >
       <component :is="item.component" />

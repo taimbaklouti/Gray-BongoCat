@@ -151,6 +151,11 @@
     }
   },
   "components": {
+    "titleBar": {
+      "minimize": "Minimize",
+      "maximize": "Maximize",
+      "close": "Close"
+    },
     "shortcut": {
       "hints": {
         "pressRecordShortcut": "Press to record shortcut",

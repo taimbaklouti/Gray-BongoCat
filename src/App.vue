@@ -93,6 +93,9 @@ useEventListener('click', (event) => {
       :locale="getAntdLocale(generalStore.appearance.language)"
       :theme="{
         algorithm: generalStore.appearance.isDark ? darkAlgorithm : defaultAlgorithm,
+        token: {
+          fontFamily: 'Pixelify Sans, Press Start 2P, monospace',
+        },
       }"
       :wave="wave"
     >

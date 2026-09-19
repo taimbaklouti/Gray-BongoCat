@@ -183,7 +183,7 @@ function handleMouseMove(event: MouseEvent) {
     :class="{ '-scale-x-100': catStore.model.mirror }"
     :style="{
       opacity: catStore.window.opacity / 100,
-      borderRadius: `${catStore.window.radius}%`,
+      borderRadius: `max(8px, ${catStore.window.radius}%)`,
     }"
     @contextmenu="handleContextmenu"
     @mousedown="handleMouseDown"

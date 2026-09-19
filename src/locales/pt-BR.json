@@ -151,6 +151,11 @@
     }
   },
   "components": {
+    "titleBar": {
+      "minimize": "Minimizar",
+      "maximize": "Maximizar",
+      "close": "Fechar"
+    },
     "shortcut": {
       "hints": {
         "pressRecordShortcut": "Pressione as teclas para gravar atalho",

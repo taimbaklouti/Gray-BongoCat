@@ -151,6 +151,11 @@
     }
   },
   "components": {
+    "titleBar": {
+      "minimize": "Thu nhỏ",
+      "maximize": "Phóng to",
+      "close": "Đóng"
+    },
     "shortcut": {
       "hints": {
         "pressRecordShortcut": "Nhấn phím/tổ hợp phím để ghi",

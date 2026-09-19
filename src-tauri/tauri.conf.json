@@ -28,8 +28,8 @@
         "label": "preference",
         "url": "index.html/#/preference",
         "visible": false,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true,
+        "decorations": false,
+        "transparent": true,
         "minWidth": 800,
         "minHeight": 600,
         "skipTaskbar": true
