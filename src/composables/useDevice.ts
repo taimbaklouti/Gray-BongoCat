@@ -1,6 +1,8 @@
 import { invoke } from '@tauri-apps/api/core'
 import { PhysicalPosition } from '@tauri-apps/api/dpi'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { cursorPosition } from '@tauri-apps/api/window'
+import { info as logInfo, warn as logWarn } from '@tauri-apps/plugin-log'
 import { isNil } from 'es-toolkit'
 import { Ticker } from 'pixi.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
@@ -137,41 +139,132 @@ export function useDevice() {
     return nextKey
   }
 
+  // P1 : si le hit-test par événements diverge (cache windowState périmé,
+  // scaling HiDPI faux), `body.opacity` restait à '0' pour toujours → chat
+  // invisible alors que tout est chargé. Le watchdog réévalue avec la
+  // position curseur + rect fenêtre LIVE et restaure si besoin.
+  const HIDE_WATCHDOG_MS = 2000
+
   const onHideOnHover = (() => {
     let timer: ReturnType<typeof setTimeout> | undefined
+    let watchdog: ReturnType<typeof setInterval> | undefined
     let wasInWindow = false
 
-    return (x: number, y: number) => {
-      const { x: winX, y: winY, width, height } = appStore.windowState[WINDOW_LABEL.MAIN] ?? {}
+    const stopWatchdog = () => {
+      if (watchdog) {
+        clearInterval(watchdog)
 
-      if (isNil(winX) || isNil(winY) || isNil(width) || isNil(height)) return
-
-      const isInWindow = inBetween(x, winX, winX + width)
-        && inBetween(y, winY, winY + height)
-
-      if (isInWindow === wasInWindow) return
-
-      if (timer) {
-        clearTimeout(timer)
-
-        timer = void 0
+        watchdog = void 0
       }
+    }
 
-      if (isInWindow) {
-        timer = setTimeout(() => {
-          document.body.style.setProperty('opacity', '0')
+    const setHidden = (hidden: boolean, source: string) => {
+      if (hidden) {
+        document.body.style.setProperty('opacity', '0')
 
-          getAppWindow().setIgnoreCursorEvents(true).catch(() => {})
-        }, catStore.window.hideOnHoverDelay * 1000)
+        getAppWindow().setIgnoreCursorEvents(true).catch(() => {})
       } else {
         document.body.style.setProperty('opacity', 'unset')
 
         getAppWindow().setIgnoreCursorEvents(catStore.window.passThrough).catch(() => {})
       }
 
-      wasInWindow = isInWindow
+      logInfo(`[hide-on-hover] ${hidden ? 'masqué' : 'restauré'} (${source})`).catch(() => {})
     }
+
+    const restoreVisible = (source: string) => {
+      stopWatchdog()
+
+      wasInWindow = false
+
+      setHidden(false, source)
+    }
+
+    const armWatchdog = () => {
+      stopWatchdog()
+
+      watchdog = setInterval(async () => {
+        try {
+          const pos = await cursorPosition().catch(() => null)
+
+          if (!pos) return
+
+          const rect = await liveRect()
+
+          if (!rect) return
+
+          if (!inBetween(pos.x, rect.x, rect.x + rect.width)
+            || !inBetween(pos.y, rect.y, rect.y + rect.height)) {
+            logWarn(`[hide-on-hover] watchdog : curseur hors fenêtre (${pos.x},${pos.y}), restauration forcée`).catch(() => {})
+
+            restoreVisible('watchdog')
+          }
+        } catch {}
+      }, HIDE_WATCHDOG_MS)
+    }
+
+    // Rect fenêtre LIVE (jamais le cache windowState, périmé après
+    // déplacement/redimensionnement ou faux sous scaling Windows).
+    const liveRect = async () => {
+      const [pos, size] = await Promise.all([
+        getAppWindow().outerPosition().catch(() => null),
+        getAppWindow().outerSize().catch(() => null),
+      ])
+
+      if (!pos || !size || !size.width || !size.height) {
+        const cached = appStore.windowState[WINDOW_LABEL.MAIN] ?? {}
+
+        if (isNil(cached.x) || isNil(cached.y) || isNil(cached.width) || isNil(cached.height)) return null
+
+        return { x: cached.x, y: cached.y, width: cached.width, height: cached.height }
+      }
+
+      return { x: pos.x, y: pos.y, width: size.width, height: size.height }
+    }
+
+    const fn = Object.assign(async (x: number, y: number) => {
+      const rect = await liveRect()
+
+      if (!rect) return
+
+      const isInWindow = inBetween(x, rect.x, rect.x + rect.width)
+        && inBetween(y, rect.y, rect.y + rect.height)
+
+      if (isInWindow) {
+        // Déjà caché ou masquage déjà armé : rien à faire.
+        if (wasInWindow || timer) return
+
+        timer = setTimeout(() => {
+          timer = void 0
+
+          wasInWindow = true
+
+          setHidden(true, 'hover')
+
+          armWatchdog()
+        }, catStore.window.hideOnHoverDelay * 1000)
+      } else {
+        // Sortie avant la fin du délai : on désarme sans restaurer
+        // (le chat n'a jamais été masqué).
+        if (timer) {
+          clearTimeout(timer)
+
+          timer = void 0
+        }
+
+        if (!wasInWindow) return
+
+        restoreVisible('hover-leave')
+      }
+    }, { stopWatchdog })
+
+    return fn
   })()
+
+  // Le watchdog tourne après un masquage : on l'arrête à la destruction.
+  onUnmounted(() => {
+    onHideOnHover.stopWatchdog()
+  })
 
   const handleCursorMove = async (cursorPoint: CursorPoint) => {
     try {
@@ -182,7 +275,7 @@ export function useDevice() {
 
       if (!catStore.window.hideOnHover) return
 
-      onHideOnHover(x, y)
+      await onHideOnHover(x, y)
     } catch {}
   }
 

@@ -84,6 +84,15 @@ class Live2d {
       throw new TypeError(i18n.global.t('utils.live2d.hints.notFound'))
     }
 
+    // P3 : sans accélération GPU (RDP, VM, vieux pilotes), Pixi échoue plus
+    // loin avec une erreur obscure → scène vide. On échoue tôt et explicite
+    // (remonte via handleLoad : toast + log fichier).
+    const probe = document.createElement('canvas')
+
+    if (!probe.getContext('webgl2') && !probe.getContext('webgl')) {
+      throw new Error('Accélération GPU indisponible (WebGL introuvable) : le chat ne peut pas être rendu')
+    }
+
     this.app = new Application()
 
     // Résolution capée : au-delà de 2x (HiDPI Windows 150-200%), le framebuffer
@@ -255,6 +264,12 @@ class Live2d {
     if (!this.model) return
 
     const { width, height } = modelSize
+
+    // P4 : dimensions nulles/NaN (modèle corrompu mais JSON valide) →
+    // scale NaN → sprite invisible sans aucune erreur. On échoue explicite.
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) {
+      throw new Error(`Dimensions du modèle invalides : ${width}x${height}`)
+    }
 
     const scaleX = innerWidth / width
     const scaleY = innerHeight / height

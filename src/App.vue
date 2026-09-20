@@ -13,7 +13,7 @@ import { RouterView } from 'vue-router'
 
 import { useTauriListen } from './composables/useTauriListen'
 import { useWindowState } from './composables/useWindowState'
-import { LANGUAGE, LISTEN_KEY } from './constants'
+import { LANGUAGE, LISTEN_KEY, WINDOW_LABEL } from './constants'
 import { getAntdLocale } from './locales/index.ts'
 import { hideWindow, showWindow } from './plugins/window'
 import { useAppStore } from './stores/app'
@@ -59,7 +59,10 @@ onMounted(async () => {
 
   // S-3 : précharge les assets du modèle standard en tâche de fond,
   // en parallèle des inits (non bloquant, erreurs ignorées).
-  live2d.prefetchDefault().catch(() => {})
+  // Fenêtre main uniquement : inutile dans la webview preference.
+  if (appWindow.label === WINDOW_LABEL.MAIN) {
+    live2d.prefetchDefault().catch(() => {})
+  }
 
   // S-1 : stores indépendants → inits en parallèle. Chacune reste isolée :
   // l'échec de l'une ne bloque ni les autres ni l'affichage.
@@ -94,10 +97,15 @@ onMounted(async () => {
 
   perfMark('fenêtre restaurée')
 
-  live2d.onFirstFrame(() => showBootWindow('première frame'))
+  // P2 : ce boot visuel ne concerne que la fenêtre main. Le même App.vue
+  // tourne dans la webview preference : sans ce garde, son filet 6s
+  // affichait la fenêtre des réglages à chaque lancement.
+  if (appWindow.label === WINDOW_LABEL.MAIN) {
+    live2d.onFirstFrame(() => showBootWindow('première frame'))
 
-  // Filet : même en échec de chargement, l'app ne reste jamais invisible.
-  bootFallbackTimer = setTimeout(() => showBootWindow('filet 6s'), 6000)
+    // Filet : même en échec de chargement, l'app ne reste jamais invisible.
+    bootFallbackTimer = setTimeout(() => showBootWindow('filet 6s'), 6000)
+  }
 })
 
 watch(() => generalStore.appearance.language, (value) => {
