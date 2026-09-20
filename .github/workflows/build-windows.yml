@@ -10,22 +10,31 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          # Épinglé au majeur vérifié en local (lockfile v9, pnpm 10.19) :
+          # `latest` flottant peut basculer de majeur et casser --frozen-lockfile.
+          version: 10
+          run_install: false
+
       - name: Setup node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - uses: pnpm/action-setup@v3
-        with:
-          version: latest
+          # Requiert pnpm/action-setup AVANT (ordre ci-dessus).
+          cache: pnpm
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Install Windows target
+        # windows-latest l'a déjà en host, mais on blinde contre
+        # un changement d'image (innoffensif si déjà installé).
+        run: rustup target add x86_64-pc-windows-msvc
+
       - name: Rust cache
         uses: swatinem/rust-cache@v2
-        with:
-          workspaces: target
 
       - name: Install front-end dependencies
         run: pnpm install --frozen-lockfile
@@ -36,6 +45,11 @@ jobs:
         run: pnpm tauri build --target x86_64-pc-windows-msvc --config '{"bundle":{"createUpdaterArtifacts":false}}'
         env:
           CI: false
+
+      - name: Verify bundle output
+        # Garde : log lisible du contenu NSIS avant l'upload
+        # (upload-artifact échoue déjà si vide via if-no-files-found).
+        run: Get-ChildItem -Recurse src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/
 
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
