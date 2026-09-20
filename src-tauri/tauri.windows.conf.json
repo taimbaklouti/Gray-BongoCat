@@ -1,6 +1,7 @@
 {
   "identifier": "com.ayangweb.BongoCat",
   "bundle": {
+    "createUpdaterArtifacts": false,
     "windows": {
       "digestAlgorithm": "sha256",
       "nsis": {
