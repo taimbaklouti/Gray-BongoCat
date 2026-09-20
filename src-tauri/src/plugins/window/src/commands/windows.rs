@@ -63,7 +63,7 @@ pub async fn set_always_on_top<R: Runtime>(
                         SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE,
                     );
                 }
-                thread::sleep(Duration::from_millis(16));
+                thread::sleep(Duration::from_millis(100));
             }
         });
     } else {

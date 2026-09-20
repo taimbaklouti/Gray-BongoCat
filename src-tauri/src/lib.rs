@@ -33,6 +33,26 @@ pub fn run() {
 
             setup::default(&app_handle, main_window.clone(), preference_window.clone());
 
+            // S-2, filet de sécurité : la fenêtre main démarre masquée
+            // (visible:false) et c'est le frontend qui l'affiche à la première
+            // frame (+ timer de secours). Si le frontend meurt avant, on
+            // l'affiche quand même après 12s pour ne jamais laisser l'app
+            // invisible. Hors macOS (nspanel géré par le plugin dédié).
+            #[cfg(not(target_os = "macos"))]
+            {
+                let fallback_window = main_window.clone();
+
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(12));
+
+                    if let Ok(visible) = fallback_window.is_visible() {
+                        if !visible {
+                            let _ = fallback_window.show();
+                        }
+                    }
+                });
+            }
+
             Ok(())
         })
         .invoke_handler(generate_handler![

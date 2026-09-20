@@ -6,6 +6,7 @@ import {
   register,
   unregister,
 } from '@tauri-apps/plugin-global-shortcut'
+import { message } from 'antdv-next'
 import { onUnmounted, ref, watch } from 'vue'
 
 export function useKeyPress(shortcut: Ref<string | undefined, string>, callback: ShortcutHandler) {
@@ -22,18 +23,26 @@ export function useKeyPress(shortcut: Ref<string | undefined, string>, callback:
   }
 
   watch(shortcut, async (value) => {
-    await unbind()
+    await unbind().catch(() => {})
 
     if (!value) return
 
-    await register(value, (event) => {
-      if (event.state === 'Released') return
+    try {
+      await register(value, (event) => {
+        if (event.state === 'Released') return
 
-      callback(event)
-    })
+        callback(event)
+      })
+    } catch {
+      // Sur Windows, un raccourci déjà pris par le système/OS fait échouer
+      // l'enregistrement : on l'explique au lieu d'une rejection silencieuse.
+      message.warning(`Raccourci global non enregistré (conflit système ?) : ${value}`)
+
+      return
+    }
 
     oldShortcut.value = value
   }, { immediate: true })
 
-  onUnmounted(unbind)
+  onUnmounted(() => unbind().catch(() => {}))
 }

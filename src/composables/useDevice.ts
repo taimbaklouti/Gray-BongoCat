@@ -96,6 +96,12 @@ export function useDevice() {
 
   onUnmounted(() => {
     Ticker.shared.remove(tickerCallback)
+
+    for (const timer of releaseTimers.values()) {
+      clearTimeout(timer)
+    }
+
+    releaseTimers.clear()
   })
 
   watch(() => catStore.model.ignoreMouse, (value) => {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { FileEntry } from '@tauri-apps/plugin-fs'
 import type { MotionInfo } from 'easy-live2d'
 
 import { convertFileSrc } from '@tauri-apps/api/core'
@@ -10,6 +11,7 @@ import { exists, readDir } from '@tauri-apps/plugin-fs'
 import { useDebounceFn, useEventListener } from '@vueuse/core'
 import { round } from 'es-toolkit'
 import { nth } from 'es-toolkit/compat'
+import { Ticker } from 'pixi.js'
 import { onMounted, onUnmounted, ref, watch } from 'vue'
 
 import { useAppMenu } from '@/composables/useAppMenu'
@@ -24,7 +26,7 @@ import { useGeneralStore } from '@/stores/general.ts'
 import { useModelStore } from '@/stores/model'
 import { isImage } from '@/utils/is'
 import live2d from '@/utils/live2d'
-import { join } from '@/utils/path'
+import { join, toAssetPath } from '@/utils/path'
 import { isWindows } from '@/utils/platform'
 import { clearObject } from '@/utils/shared'
 
@@ -58,32 +60,40 @@ useEventListener('resize', () => {
 watch(() => modelStore.currentModel, async (model) => {
   if (!model) return
 
+  // `handleLoad` gère `modelReady` lui-même (avec garde anti-race) : ce
+  // watcher ne le touche plus pour ne pas débloquer l'overlay d'un switch
+  // plus récent encore en cours.
   await handleLoad()
 
+  // Switch entre-temps : les assets ci-dessous appartiennent à un modèle
+  // périmé, on ne les applique pas.
+  if (modelStore.currentModel?.id !== model.id) return
+
   const path = join(model.path, 'resources', 'background.png')
-
-  const existed = await exists(path)
-
-  backgroundImagePath.value = existed ? convertFileSrc(path) : void 0
-
-  clearObject([modelStore.supportKeys, modelStore.pressedKeys])
-
   const resourcePath = join(model.path, 'resources')
   const groups = ['left-keys', 'right-keys']
 
-  for await (const groupName of groups) {
-    const groupDir = join(resourcePath, groupName)
-    const files = await readDir(groupDir).catch(() => [])
-    const imageFiles = files.filter(file => isImage(file.name))
+  // Lectures FS en parallèle (séquentiel avant : lent sur Windows/Defender).
+  const [existed, ...groupFiles] = await Promise.all([
+    exists(path),
+    ...groups.map(groupName => readDir(join(resourcePath, groupName)).catch((): FileEntry[] => [])),
+  ])
 
-    for (const file of imageFiles) {
+  if (modelStore.currentModel?.id !== model.id) return
+
+  backgroundImagePath.value = existed ? convertFileSrc(toAssetPath(path)) : void 0
+
+  clearObject([modelStore.supportKeys, modelStore.pressedKeys])
+
+  groupFiles.forEach((files, index) => {
+    const groupDir = join(resourcePath, groups[index])
+
+    for (const file of files.filter(file => isImage(file.name))) {
       const fileName = file.name.split('.')[0]
 
       modelStore.supportKeys[fileName] = join(groupDir, file.name)
     }
-  }
-
-  modelStore.modelReady = true
+  })
 }, { deep: true, immediate: true })
 
 watch([() => catStore.window.scale, modelSize], async ([scale, modelSize]) => {
@@ -122,6 +132,24 @@ watch(() => catStore.window.visible, async (value) => {
     }
   } catch {}
 })
+
+function pauseRender(paused: boolean) {
+  // Économise GPU/CPU/batterie : le ticker partagé pilote tout le rendu
+  // (Pixi, Live2D, curseur). start/stop sont idempotents.
+  if (paused) {
+    Ticker.shared.stop()
+  } else {
+    Ticker.shared.start()
+  }
+}
+
+watch(() => catStore.window.visible, value => pauseRender(!value), { immediate: true })
+
+// Le store peut être contourné (toggle ciblé par label) : on suit aussi
+// les events directs show/hide.
+useTauriListen<string>(LISTEN_KEY.SHOW_WINDOW, () => pauseRender(false))
+
+useTauriListen<string>(LISTEN_KEY.HIDE_WINDOW, () => pauseRender(true))
 
 watch(() => catStore.window.passThrough, (value) => {
   appWindow.setIgnoreCursorEvents(value).catch(() => {})
@@ -219,7 +247,7 @@ function handleMouseMove(event: MouseEvent) {
       v-for="path in modelStore.pressedKeys"
       :key="path"
       class="object-cover"
-      :src="convertFileSrc(path)"
+      :src="convertFileSrc(toAssetPath(path))"
     >
 
     <div

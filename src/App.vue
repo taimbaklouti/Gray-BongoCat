@@ -21,6 +21,8 @@ import { useCatStore } from './stores/cat'
 import { useGeneralStore } from './stores/general'
 import { useModelStore } from './stores/model'
 import { useShortcutStore } from './stores/shortcut.ts'
+import live2d from './utils/live2d'
+import { perfMark } from './utils/perf'
 
 const appStore = useAppStore()
 const modelStore = useModelStore()
@@ -28,26 +30,74 @@ const catStore = useCatStore()
 const generalStore = useGeneralStore()
 const shortcutStore = useShortcutStore()
 const appWindow = getCurrentWebviewWindow()
-const { isRestored, restoreState } = useWindowState()
+const { restoreState } = useWindowState()
 const { defaultAlgorithm } = theme
 const { locale } = useI18n()
-onMounted(async () => {
-  // Chaque init est isolée : l'échec de l'une ne doit jamais bloquer
-  // les suivantes ni empêcher l'affichage (isRestored).
-  await appStore.$tauri.start().catch(() => {})
-  await appStore.init().catch(() => {})
-  await modelStore.$tauri.start().catch(() => {})
-  await modelStore.init().catch(() => {})
-  await catStore.$tauri.start().catch(() => {})
+
+// S-2 : la fenêtre main démarre MASQUÉE (visible:false dans tauri.conf)
+// pendant restore + premier rendu → zéro flash. Affichage dès la première
+// frame du canvas, avec filet temporel si le chargement échoue.
+let bootShown = false
+let bootFallbackTimer: ReturnType<typeof setTimeout> | undefined
+
+async function showBootWindow(source: string) {
+  if (bootShown) return
+
+  bootShown = true
+
+  if (bootFallbackTimer) clearTimeout(bootFallbackTimer)
+
+  perfMark(`fenêtre affichée (${source})`)
+
   try {
-    catStore.init()
+    await showWindow()
   } catch {}
-  await generalStore.$tauri.start().catch(() => {})
-  await generalStore.init().catch(() => {})
-  await shortcutStore.$tauri.start().catch(() => {})
+}
+
+onMounted(async () => {
+  perfMark('app montée')
+
+  // S-3 : précharge les assets du modèle standard en tâche de fond,
+  // en parallèle des inits (non bloquant, erreurs ignorées).
+  live2d.prefetchDefault().catch(() => {})
+
+  // S-1 : stores indépendants → inits en parallèle. Chacune reste isolée :
+  // l'échec de l'une ne bloque ni les autres ni l'affichage.
+  await Promise.all([
+    (async () => {
+      await appStore.$tauri.start().catch(() => {})
+      await appStore.init().catch(() => {})
+    })(),
+    (async () => {
+      await modelStore.$tauri.start().catch(() => {})
+      await modelStore.init().catch(() => {})
+    })(),
+    (async () => {
+      await catStore.$tauri.start().catch(() => {})
+
+      try {
+        catStore.init()
+      } catch {}
+    })(),
+    (async () => {
+      await generalStore.$tauri.start().catch(() => {})
+      await generalStore.init().catch(() => {})
+    })(),
+    shortcutStore.$tauri.start().catch(() => {}),
+  ])
+
+  perfMark('stores prêts')
+
   try {
     await restoreState()
   } catch {}
+
+  perfMark('fenêtre restaurée')
+
+  live2d.onFirstFrame(() => showBootWindow('première frame'))
+
+  // Filet : même en échec de chargement, l'app ne reste jamais invisible.
+  bootFallbackTimer = setTimeout(() => showBootWindow('filet 6s'), 6000)
 })
 
 watch(() => generalStore.appearance.language, (value) => {
@@ -117,7 +167,7 @@ useEventListener('click', (event) => {
       }"
       :wave="wave"
     >
-      <RouterView v-if="isRestored" />
+      <RouterView />
     </ConfigProvider>
   </HappyProvider>
 </template>

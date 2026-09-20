@@ -17,3 +17,13 @@ export function join(...paths: string[]) {
 
   return joinPaths.join(separator)
 }
+
+/**
+ * Normalise un chemin natif pour les URLs d'assets (`convertFileSrc`) et les
+ * requêtes `fetch`/`Image` : sur Windows, les `\` mélangés aux `/` des JSON de
+ * modèle produisent des URLs que Webview2 ne résout pas (texture pendue →
+ * "Switching..." infini). Les API `fs` gardent, elles, le chemin natif.
+ */
+export function toAssetPath(path: string) {
+  return path.replace(/\\/g, '/')
+}

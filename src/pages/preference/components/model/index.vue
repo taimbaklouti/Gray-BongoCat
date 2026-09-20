@@ -11,7 +11,7 @@ import type { Model } from '@/stores/model'
 
 import { useCatStore } from '@/stores/cat'
 import { useModelStore } from '@/stores/model'
-import { join } from '@/utils/path'
+import { join, toAssetPath } from '@/utils/path'
 
 import BehaviorModal from './components/behavior-modal/index.vue'
 import FloatMenu from './components/float-menu/index.vue'
@@ -86,7 +86,7 @@ async function handleDelete(item: Model) {
         <template #cover>
           <img
             alt="example"
-            :src="convertFileSrc(join(data.path, 'resources', 'cover.png'))"
+            :src="convertFileSrc(toAssetPath(join(data.path, 'resources', 'cover.png')))"
           >
         </template>
 

@@ -6,11 +6,13 @@ import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { message } from 'antdv-next'
 import { isNil, round } from 'es-toolkit'
 import { findKey, nth } from 'es-toolkit/compat'
+import { Ticker } from 'pixi.js'
 import { ref } from 'vue'
 
 import { useCatStore } from '@/stores/cat'
 import { useModelStore } from '@/stores/model'
 import { getCursorMonitor } from '@/utils/monitor'
+import { perfMark } from '@/utils/perf'
 import { isMac } from '@/utils/platform'
 
 import live2d from '../utils/live2d'
@@ -21,6 +23,13 @@ const letterKeys = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('') as readonly string[]
 function getAppWindow() {
   return getCurrentWebviewWindow()
 }
+
+/**
+ * Génération du chargement en cours, partagée entre toutes les instances du
+ * composable : si l'utilisateur switch deux fois vite (A → B), le chargement
+ * A, plus lent, ne doit ni écraser les motions de B ni toucher `modelReady`.
+ */
+let loadGeneration = 0
 
 export interface ModelSize {
   width: number
@@ -69,14 +78,39 @@ export function useModel() {
   }
 
   async function handleLoad() {
-    try {
-      if (!modelStore.currentModel) return
+    const model = modelStore.currentModel
 
-      const { path } = modelStore.currentModel
+    if (!model) return
+
+    const generation = ++loadGeneration
+    const modelId = model.id
+
+    const isStale = () => generation !== loadGeneration || modelStore.currentModel?.id !== modelId
+
+    const reapplyHiddenPause = () => {
+      // Le chargement a forcé le ticker (frames requises pour `ready`) :
+      // si le chat est censé être caché, on rendort le rendu aussitôt.
+      if (!catStore.window.visible) {
+        Ticker.shared.stop()
+      }
+    }
+
+    // W-6 × timeout : `model.ready` ne se résout que sur une frame rendue ;
+    // le ticker DOIT tourner pendant le chargement, même fenêtre cachée.
+    // (Start idempotent ; l'état "caché" est réappliqué en fin de chargement.)
+    Ticker.shared.start()
+    perfMark(`load start ${modelId.slice(0, 8)}`)
+
+    try {
+      const { path } = model
 
       await resolveResource(path)
 
       const { width, height, motions, expressions } = await live2d.load(path)
+
+      // Switch plus récent entre-temps : on jette ce résultat périmé
+      // (ni motions écrasées, ni overlay touché).
+      if (isStale()) return
 
       const nextMotions = Object.entries(motions)
 
@@ -85,8 +119,6 @@ export function useModel() {
       modelStore.currentExpressions = expressions
 
       handleResize()
-
-      const modelId = modelStore.currentModel.id
 
       const behaviorIds: string[] = []
 
@@ -109,9 +141,27 @@ export function useModel() {
 
         modelStore.shortcuts[id] = shortcut
       }
+
+      modelStore.modelReady = true
+      perfMark(`load done ${modelId.slice(0, 8)}`)
     } catch (error) {
+      // Périmé : le switch en cours gère déjà l'overlay.
+      if (isStale()) {
+        reapplyHiddenPause()
+
+        return
+      }
+
       message.error(String(error))
+
+      // Déblocage systématique : on libère l'overlay "Switching..."
+      // (l'ancien modèle ayant été détruit, la scène peut rester vide,
+      // mais l'UI ne reste jamais bloquée).
+      modelStore.modelReady = true
+      perfMark(`load error ${modelId.slice(0, 8)}`)
     }
+
+    reapplyHiddenPause()
   }
 
   function handleDestroy() {

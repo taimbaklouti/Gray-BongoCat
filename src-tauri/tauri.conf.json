@@ -18,6 +18,7 @@
         "url": "index.html/#/",
         "width": 600,
         "height": 500,
+        "visible": false,
         "resizable": true,
         "shadow": false,
         "alwaysOnTop": true,

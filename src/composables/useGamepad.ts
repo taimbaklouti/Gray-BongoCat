@@ -46,11 +46,13 @@ export function useGamepad() {
   }))
 
   watch(() => modelStore.currentModel?.mode, (mode) => {
+    // Échec possible (pas de manette supportée, backend indisponible) :
+    // loggé globalement, jamais propagé.
     if (mode === 'gamepad') {
-      return invoke(INVOKE_KEY.START_GAMEPAD_LISTING)
+      invoke(INVOKE_KEY.START_GAMEPAD_LISTING).catch(() => {})
+    } else {
+      invoke(INVOKE_KEY.STOP_GAMEPAD_LISTING).catch(() => {})
     }
-
-    invoke(INVOKE_KEY.STOP_GAMEPAD_LISTING)
   }, { immediate: true })
 
   watch(sticks.left, ({ x, y, moved, pressed }) => {
