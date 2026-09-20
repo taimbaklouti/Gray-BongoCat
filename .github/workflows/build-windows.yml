@@ -46,14 +46,9 @@ jobs:
         env:
           CI: false
 
-      - name: Verify bundle output
-        # Garde : log lisible du contenu NSIS avant l'upload
-        # (upload-artifact échoue déjà si vide via if-no-files-found).
-        run: Get-ChildItem -Recurse src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/
-
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: BongoCat-windows-x64-installer
-          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/**/*.exe
           if-no-files-found: error
