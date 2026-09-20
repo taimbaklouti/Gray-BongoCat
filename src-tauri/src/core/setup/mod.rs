@@ -17,8 +17,8 @@ pub fn default(
     main_window: WebviewWindow,
     preference_window: WebviewWindow,
 ) {
-    #[cfg(debug_assertions)]
-    main_window.open_devtools();
+    // NB : ne pas ouvrir les DevTools au démarrage — leur ouverture
+    // automatique fait planter l'application au lancement.
 
     platform(app_handle, main_window.clone(), preference_window.clone());
 }

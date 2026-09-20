@@ -15,9 +15,12 @@ import { isMac } from '@/utils/platform'
 
 import live2d from '../utils/live2d'
 
-const appWindow = getCurrentWebviewWindow()
 const digitKeys = '1234567890'.split('') as readonly string[]
 const letterKeys = 'QWERTYUIOPASDFGHJKLZXCVBNM'.split('') as readonly string[]
+
+function getAppWindow() {
+  return getCurrentWebviewWindow()
+}
 
 export interface ModelSize {
   width: number
@@ -123,17 +126,26 @@ export function useModel() {
     const { width, height } = modelSize.value
 
     if (round(innerWidth / innerHeight, 1) !== round(width / height, 1)) {
-      await appWindow.setSize(
+      // Taille logique ici (voir main/index.vue : taille physique =
+      // logique × scale/100) : on ne touche pas à la sémantique, on
+      // évite juste de laisser une erreur IPC casser le redimensionnement.
+      await getAppWindow().setSize(
         new LogicalSize({
           width: innerWidth,
           height: Math.ceil(innerWidth * (height / width)),
         }),
-      )
+      ).catch(() => {})
     }
 
-    const size = await appWindow.size()
+    const size = await getAppWindow().size().catch(() => null)
 
-    catStore.window.scale = round((size.width / width) * 100)
+    if (!size || !size.width) return
+
+    const nextScale = round((size.width / width) * 100)
+
+    if (Number.isFinite(nextScale) && nextScale > 0) {
+      catStore.window.scale = nextScale
+    }
   }
 
   const handlePress = (key: string) => {

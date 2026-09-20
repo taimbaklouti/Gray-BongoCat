@@ -54,10 +54,17 @@ body,
   image-rendering: crisp-edges;
 }
 
-img,
-canvas {
+/* NB : ne JAMAIS appliquer image-rendering au canvas WebGL (Live2D/pixi)
+   — sous WebKitGTK, `crisp-edges` casse la composition et rend le canvas
+   (donc le chat) invisible. On force `auto` car la valeur est héritée
+   depuis html/body/#app ; les sprites <img> restent couverts par la règle dédiée. */
+img {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
+}
+
+canvas {
+  image-rendering: auto;
 }
 
 html {

@@ -17,7 +17,7 @@ import { useDevice } from '@/composables/useDevice'
 import { useGamepad } from '@/composables/useGamepad'
 import { useModel } from '@/composables/useModel'
 import { useTauriListen } from '@/composables/useTauriListen'
-import { LISTEN_KEY } from '@/constants'
+import { LISTEN_KEY, WINDOW_LABEL } from '@/constants'
 import { hideWindow, setAlwaysOnTop, setTaskbarVisibility, showWindow } from '@/plugins/window'
 import { useCatStore } from '@/stores/cat'
 import { useGeneralStore } from '@/stores/general.ts'
@@ -89,14 +89,16 @@ watch(() => modelStore.currentModel, async (model) => {
 watch([() => catStore.window.scale, modelSize], async ([scale, modelSize]) => {
   if (!modelSize) return
 
+  if (!Number.isFinite(scale) || scale <= 0) return
+
   const { width, height } = modelSize
 
-  appWindow.setSize(
+  await appWindow.setSize(
     new PhysicalSize({
       width: Math.round(width * (scale / 100)),
       height: Math.round(height * (scale / 100)),
     }),
-  )
+  ).catch(() => {})
 }, { immediate: true })
 
 watch([modelStore.pressedKeys, stickActive], ([keys, stickActive]) => {
@@ -112,11 +114,17 @@ watch([modelStore.pressedKeys, stickActive], ([keys, stickActive]) => {
 }, { deep: true })
 
 watch(() => catStore.window.visible, async (value) => {
-  value ? showWindow() : hideWindow()
+  try {
+    if (value) {
+      await showWindow()
+    } else {
+      await hideWindow()
+    }
+  } catch {}
 })
 
 watch(() => catStore.window.passThrough, (value) => {
-  appWindow.setIgnoreCursorEvents(value)
+  appWindow.setIgnoreCursorEvents(value).catch(() => {})
 }, { immediate: true })
 
 watch(() => catStore.window.alwaysOnTop, setAlwaysOnTop, { immediate: true })
@@ -139,6 +147,13 @@ function handleMouseDown() {
   appWindow.startDragging()
 }
 
+// Double-clic sur le chat : ouvre directement la fenêtre des paramètres.
+function handleDoubleClick(event: MouseEvent) {
+  event.preventDefault()
+
+  showWindow(WINDOW_LABEL.PREFERENCE)
+}
+
 async function handleContextmenu(event: MouseEvent) {
   event.preventDefault()
 
@@ -154,15 +169,17 @@ async function handleContextmenu(event: MouseEvent) {
 
   // Temporarily disable always-on-top on Windows so the context menu is not covered
   if (isWindows && catStore.window.alwaysOnTop) {
-    setAlwaysOnTop(false)
+    await setAlwaysOnTop(false).catch(() => {})
   }
 
-  await menu.popup()
-
-  // Restore always-on-top after the menu is closed
-  if (!isWindows || !catStore.window.alwaysOnTop) return
-
-  setAlwaysOnTop(true)
+  try {
+    await menu.popup()
+  } finally {
+    // Restore always-on-top after the menu is closed, even if popup() threw
+    if (isWindows && catStore.window.alwaysOnTop) {
+      await setAlwaysOnTop(true).catch(() => {})
+    }
+  }
 }
 
 function handleMouseMove(event: MouseEvent) {
@@ -186,6 +203,7 @@ function handleMouseMove(event: MouseEvent) {
       borderRadius: `max(8px, ${catStore.window.radius}%)`,
     }"
     @contextmenu="handleContextmenu"
+    @dblclick="handleDoubleClick"
     @mousedown="handleMouseDown"
     @mousemove="handleMouseMove"
   >

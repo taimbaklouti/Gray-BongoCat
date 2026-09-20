@@ -38,7 +38,10 @@ interface KeyboardEvent {
 type DeviceEvent = MouseButtonEvent | MouseMoveEvent | KeyboardEvent
 
 const DAMPING_DECAY = 0.75
-const appWindow = getCurrentWebviewWindow()
+
+function getAppWindow() {
+  return getCurrentWebviewWindow()
+}
 
 export function useDevice() {
   const modelStore = useModelStore()
@@ -76,13 +79,19 @@ export function useDevice() {
   }
 
   onMounted(async () => {
-    scaleFactor.value = isMac ? await appWindow.scaleFactor() : 1
+    try {
+      scaleFactor.value = isMac ? await getAppWindow().scaleFactor() : 1
+    } catch {
+      scaleFactor.value = 1
+    }
 
-    appWindow.onScaleChanged(({ payload }) => {
-      if (!isMac) return
+    try {
+      getAppWindow().onScaleChanged(({ payload }) => {
+        if (!isMac) return
 
-      scaleFactor.value = payload.scaleFactor
-    })
+        scaleFactor.value = payload.scaleFactor
+      })
+    } catch {}
   })
 
   onUnmounted(() => {
@@ -98,7 +107,9 @@ export function useDevice() {
   }, { immediate: true })
 
   const startListening = () => {
-    invoke(INVOKE_KEY.START_DEVICE_LISTENING)
+    // Erreur (permissions, backend indisponible) loggée, jamais propagée :
+    // le chat doit rester visible même si l'écoute échoue.
+    return invoke(INVOKE_KEY.START_DEVICE_LISTENING).catch(() => {})
   }
 
   const getSupportedKey = (key: string) => {
@@ -144,12 +155,12 @@ export function useDevice() {
         timer = setTimeout(() => {
           document.body.style.setProperty('opacity', '0')
 
-          appWindow.setIgnoreCursorEvents(true)
+          getAppWindow().setIgnoreCursorEvents(true).catch(() => {})
         }, catStore.window.hideOnHoverDelay * 1000)
       } else {
         document.body.style.setProperty('opacity', 'unset')
 
-        appWindow.setIgnoreCursorEvents(catStore.window.passThrough)
+        getAppWindow().setIgnoreCursorEvents(catStore.window.passThrough).catch(() => {})
       }
 
       wasInWindow = isInWindow
@@ -157,14 +168,16 @@ export function useDevice() {
   })()
 
   const handleCursorMove = async (cursorPoint: CursorPoint) => {
-    const x = cursorPoint.x * scaleFactor.value
-    const y = cursorPoint.y * scaleFactor.value
+    try {
+      const x = cursorPoint.x * scaleFactor.value
+      const y = cursorPoint.y * scaleFactor.value
 
-    handleMouseMove(new PhysicalPosition(x, y))
+      await handleMouseMove(new PhysicalPosition(x, y))
 
-    if (!catStore.window.hideOnHover) return
+      if (!catStore.window.hideOnHover) return
 
-    onHideOnHover(x, y)
+      onHideOnHover(x, y)
+    } catch {}
   }
 
   const handleAutoRelease = (key: string, delay = 100) => {

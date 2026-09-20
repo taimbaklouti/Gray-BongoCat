@@ -29,20 +29,25 @@ const generalStore = useGeneralStore()
 const shortcutStore = useShortcutStore()
 const appWindow = getCurrentWebviewWindow()
 const { isRestored, restoreState } = useWindowState()
-const { darkAlgorithm, defaultAlgorithm } = theme
+const { defaultAlgorithm } = theme
 const { locale } = useI18n()
-
 onMounted(async () => {
-  await appStore.$tauri.start()
-  await appStore.init()
-  await modelStore.$tauri.start()
-  await modelStore.init()
-  await catStore.$tauri.start()
-  catStore.init()
-  await generalStore.$tauri.start()
-  await generalStore.init()
-  await shortcutStore.$tauri.start()
-  await restoreState()
+  // Chaque init est isolée : l'échec de l'une ne doit jamais bloquer
+  // les suivantes ni empêcher l'affichage (isRestored).
+  await appStore.$tauri.start().catch(() => {})
+  await appStore.init().catch(() => {})
+  await modelStore.$tauri.start().catch(() => {})
+  await modelStore.init().catch(() => {})
+  await catStore.$tauri.start().catch(() => {})
+  try {
+    catStore.init()
+  } catch {}
+  await generalStore.$tauri.start().catch(() => {})
+  await generalStore.init().catch(() => {})
+  await shortcutStore.$tauri.start().catch(() => {})
+  try {
+    await restoreState()
+  } catch {}
 })
 
 watch(() => generalStore.appearance.language, (value) => {
@@ -62,7 +67,17 @@ useTauriListen(LISTEN_KEY.HIDE_WINDOW, ({ payload }) => {
 })
 
 useEventListener('unhandledrejection', ({ reason }) => {
-  const message = isString(reason) ? reason : JSON.stringify(reason)
+  let message: string
+
+  if (isString(reason)) {
+    message = reason
+  } else {
+    try {
+      message = JSON.stringify(reason)
+    } catch {
+      message = String(reason)
+    }
+  }
 
   error(message)
 })
@@ -92,9 +107,12 @@ useEventListener('click', (event) => {
     <ConfigProvider
       :locale="getAntdLocale(generalStore.appearance.language)"
       :theme="{
-        algorithm: generalStore.appearance.isDark ? darkAlgorithm : defaultAlgorithm,
+        // Le thème est verrouillé en mode clair (indépendamment de l'OS)
+        algorithm: defaultAlgorithm,
         token: {
           fontFamily: 'Pixelify Sans, Press Start 2P, monospace',
+          colorBgContainer: '#ffffff',
+          colorBgLayout: '#fff5f7',
         },
       }"
       :wave="wave"

@@ -18,7 +18,7 @@ const hasDescription = computed(() => {
 <template>
   <Flex
     :align="vertical ? void 0 : 'center'"
-    class="b-1 b-solid p-4 bg-elevated b-border-sec rounded-lg"
+    class="b-1 b-[var(--pixel-coral)] b-solid p-4 shadow-[0_2px_0_0_rgba(217,123,115,0.35)] bg-white rounded-lg"
     :gap="vertical ? 'middle' : 'large'"
     justify="space-between"
     :vertical="vertical"
@@ -28,7 +28,7 @@ const hasDescription = computed(() => {
       class="flex-1"
     >
       <Flex vertical>
-        <div class="text-3.5 font-medium">
+        <div class="text-3.5 text-[var(--pixel-maroon)] font-medium">
           {{ title }}
         </div>
 

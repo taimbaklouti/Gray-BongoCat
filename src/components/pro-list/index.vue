@@ -13,7 +13,7 @@ const { title } = defineProps<{
     vertical
   >
     <div
-      class="text-4 font-medium"
+      class="text-4 text-[var(--pixel-maroon)] font-medium"
       data-tauri-drag-region
     >
       {{ title }}
@@ -25,5 +25,5 @@ const { title } = defineProps<{
     >
       <slot />
     </Flex>
-  </FLex>
+  </Flex>
 </template>

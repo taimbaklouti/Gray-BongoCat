@@ -16,6 +16,9 @@
         "label": "main",
         "title": "BongoCat",
         "url": "index.html/#/",
+        "width": 600,
+        "height": 500,
+        "resizable": true,
         "shadow": false,
         "alwaysOnTop": true,
         "transparent": true,
@@ -52,6 +55,11 @@
     "category": "Entertainment",
     "createUpdaterArtifacts": true,
     "targets": ["nsis", "dmg", "app", "appimage", "deb", "rpm"],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
     "shortDescription": "BongoCat",
     "icon": [
       "icons/32x32.png",

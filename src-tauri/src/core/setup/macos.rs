@@ -34,7 +34,11 @@ pub fn platform(
 
     let _ = app_handle.set_dock_visibility(false);
 
-    let panel = main_window.to_panel::<NsPanel>().unwrap();
+    let Ok(panel) = main_window.to_panel::<NsPanel>() else {
+        eprintln!("BongoCat: failed to convert main window to panel, using standard window");
+
+        return;
+    };
 
     panel.set_level(PanelLevel::Dock.value());
 

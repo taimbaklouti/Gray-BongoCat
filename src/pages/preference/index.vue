@@ -77,9 +77,9 @@ const menus = computed(() => [
     :spinning="!modelStore.modelReady"
   />
 
-  <Flex class="pixel-gingham pixel-frame h-[calc(100vh-40px)] overflow-hidden">
+  <Flex class="pixel-gingham pixel-frame h-[calc(100vh-40px)] overflow-hidden bg-[#fff5f7]">
     <div
-      class="pixel-gingham h-full w-30 flex flex-col items-center gap-4 overflow-auto b-r-4 b-[var(--pixel-coral)] b-solid pt-4"
+      class="pixel-gingham h-full w-30 flex flex-col items-center gap-4 overflow-auto b-r-4 b-[var(--pixel-coral)] b-solid bg-[#fff5f7] pt-4"
       data-tauri-drag-region
     >
       <div class="flex flex-col items-center gap-2">
@@ -98,16 +98,16 @@ const menus = computed(() => [
         <div
           v-for="(item, index) in menus"
           :key="item.key"
-          class="size-20 flex flex-col cursor-pointer items-center justify-center gap-2 transition color-text-tertiary rounded-lg hover:bg-[--ant-color-fill-tertiary] dark:color-text-secondary"
-          :class="{ 'bg-container! color-blue-5! dark:color-blue-7! font-bold dark:bg-[--ant-color-fill-quaternary]!': current === index }"
+          class="size-20 flex flex-col cursor-pointer items-center justify-center gap-2 transition rounded-lg hover:bg-[#ffffff]"
+          :class="{ 'bg-[#ffffff]! font-bold shadow-[0_2px_0_0_var(--pixel-coral)]': current === index }"
           @click="current = index"
         >
           <div
-            class="size-8"
+            class="size-8 text-[var(--pixel-maroon)]"
             :class="item.icon"
           />
 
-          <span>{{ item.label }}</span>
+          <span class="text-[var(--pixel-maroon)]">{{ item.label }}</span>
         </div>
       </div>
     </div>
@@ -116,7 +116,7 @@ const menus = computed(() => [
       v-for="(item, index) in menus"
       v-show="current === index"
       :key="item.key"
-      class="pixel-gingham flex-1 overflow-auto p-4"
+      class="flex-1 overflow-auto bg-[#fff5f7] p-4"
       data-tauri-drag-region
     >
       <component :is="item.component" />

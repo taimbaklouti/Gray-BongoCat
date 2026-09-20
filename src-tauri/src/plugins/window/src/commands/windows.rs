@@ -1,4 +1,4 @@
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicIsize, Ordering};
 use std::sync::{Arc, OnceLock};
 use std::thread;
 use std::time::Duration;
@@ -9,6 +9,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 
 static TOPMOST_RUNNING: OnceLock<Arc<AtomicBool>> = OnceLock::new();
+static TOPMOST_HWND: OnceLock<Arc<AtomicIsize>> = OnceLock::new();
 
 #[command]
 pub async fn show_window<R: Runtime>(_app_handle: AppHandle<R>, window: WebviewWindow<R>) {
@@ -29,9 +30,14 @@ pub async fn set_always_on_top<R: Runtime>(
     always_on_top: bool,
 ) {
     let running = TOPMOST_RUNNING.get_or_init(|| Arc::new(AtomicBool::new(false)));
+    let topmost_hwnd = TOPMOST_HWND.get_or_init(|| Arc::new(AtomicIsize::new(0)));
 
     let Ok(hwnd) = window.hwnd() else { return };
     let raw_hwnd = hwnd.0 as isize;
+
+    // Toujours publier le HWND courant : la boucle de maintien lit cette
+    // valeur à chaque itération et suit donc la fenêtre recréée.
+    topmost_hwnd.store(raw_hwnd, Ordering::SeqCst);
 
     if always_on_top {
         let Ok(_) = running.compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
@@ -40,11 +46,12 @@ pub async fn set_always_on_top<R: Runtime>(
         };
 
         let running = Arc::clone(running);
+        let topmost_hwnd = Arc::clone(topmost_hwnd);
 
         thread::spawn(move || {
-            let hwnd = HWND(raw_hwnd as *mut _);
-
             while running.load(Ordering::SeqCst) {
+                let hwnd = HWND(topmost_hwnd.load(Ordering::SeqCst) as *mut _);
+
                 unsafe {
                     let _ = SetWindowPos(
                         hwnd,

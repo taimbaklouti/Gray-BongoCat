@@ -60,11 +60,13 @@ export const useGeneralStore = defineStore('general', () => {
   })
 
   const getLanguage = async () => {
-    const locale = await getLocale<Language>()
+    try {
+      const locale = await getLocale<Language>()
 
-    if (Object.values(LANGUAGE).includes(locale)) {
-      return locale
-    }
+      if (Object.values(LANGUAGE).includes(locale)) {
+        return locale
+      }
+    } catch {}
 
     return LANGUAGE.EN_US
   }
@@ -72,17 +74,22 @@ export const useGeneralStore = defineStore('general', () => {
   const init = async () => {
     appearance.language ??= await getLanguage()
 
-    if (migrated.value) return
+    if (!migrated.value) {
+      app.autostart = autostart.value
+      app.taskbarVisible = taskbarVisibility.value
 
-    app.autostart = autostart.value
-    app.taskbarVisible = taskbarVisibility.value
+      appearance.theme = theme.value
+      appearance.isDark = isDark.value
 
-    appearance.theme = theme.value
-    appearance.isDark = isDark.value
+      update.autoCheck = autoCheckUpdate.value
 
-    update.autoCheck = autoCheckUpdate.value
+      migrated.value = true
+    }
 
-    migrated.value = true
+    // Le thème clair est forcé : toute valeur dark/auto sauvegardée est
+    // réinitialisée, indépendamment des préférences de l'OS.
+    appearance.theme = 'light'
+    appearance.isDark = false
   }
 
   return {

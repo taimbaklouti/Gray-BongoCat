@@ -17,22 +17,22 @@ const COMMAND = {
 
 export function showWindow(label?: WindowLabel) {
   if (label) {
-    emit(LISTEN_KEY.SHOW_WINDOW, label)
-  } else {
-    invoke(COMMAND.SHOW_WINDOW)
+    return emit(LISTEN_KEY.SHOW_WINDOW, label).catch(() => {})
   }
+
+  return invoke(COMMAND.SHOW_WINDOW).catch(() => {})
 }
 
 export function hideWindow(label?: WindowLabel) {
   if (label) {
-    emit(LISTEN_KEY.HIDE_WINDOW, label)
-  } else {
-    invoke(COMMAND.HIDE_WINDOW)
+    return emit(LISTEN_KEY.HIDE_WINDOW, label).catch(() => {})
   }
+
+  return invoke(COMMAND.HIDE_WINDOW).catch(() => {})
 }
 
 export function setAlwaysOnTop(alwaysOnTop: boolean) {
-  invoke(COMMAND.SET_ALWAYS_ON_TOP, { alwaysOnTop })
+  return invoke(COMMAND.SET_ALWAYS_ON_TOP, { alwaysOnTop }).catch(() => {})
 }
 
 export async function toggleWindowVisible(label?: WindowLabel) {
@@ -50,5 +50,5 @@ export async function toggleWindowVisible(label?: WindowLabel) {
 }
 
 export async function setTaskbarVisibility(visible: boolean) {
-  invoke(COMMAND.SET_TASKBAR_VISIBILITY, { visible })
+  await invoke(COMMAND.SET_TASKBAR_VISIBILITY, { visible }).catch(() => {})
 }

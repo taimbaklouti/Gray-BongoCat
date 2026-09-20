@@ -20,11 +20,7 @@ export const INVOKE_KEY = {
 }
 
 export const LANGUAGE = {
-  ZH_CN: 'zh-CN',
-  ZH_TW: 'zh-TW',
   EN_US: 'en-US',
-  VI_VN: 'vi-VN',
-  PT_BR: 'pt-BR',
 } as const
 
 export const WINDOW_LABEL = {

@@ -24,7 +24,13 @@ class Live2d {
   private initApp() {
     if (this.app) return
 
-    const view = document.getElementById('live2dCanvas') as HTMLCanvasElement
+    const view = document.getElementById('live2dCanvas')
+
+    // Fenêtre sans canvas (ex. preference) ou appel avant montage :
+    // on signale proprement au lieu de crasher Application.init().
+    if (!(view instanceof HTMLCanvasElement)) {
+      throw new TypeError(i18n.global.t('utils.live2d.hints.notFound'))
+    }
 
     this.app = new Application()
 

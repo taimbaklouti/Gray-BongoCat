@@ -7,30 +7,34 @@ function createCursorMonitor() {
   let cachedMonitor: Monitor | null = null
 
   return async (cursorPoint?: PhysicalPosition) => {
-    cursorPoint ??= await cursorPosition()
+    try {
+      cursorPoint ??= await cursorPosition()
 
-    if (cachedMonitor) {
-      const { size, position } = cachedMonitor
+      if (cachedMonitor) {
+        const { size, position } = cachedMonitor
 
-      const inBounds = cursorPoint.x >= position.x
-        && cursorPoint.x < position.x + size.width
-        && cursorPoint.y >= position.y
-        && cursorPoint.y < position.y + size.height
+        const inBounds = cursorPoint.x >= position.x
+          && cursorPoint.x < position.x + size.width
+          && cursorPoint.y >= position.y
+          && cursorPoint.y < position.y + size.height
 
-      if (inBounds) {
-        return cachedMonitor
+        if (inBounds) {
+          return cachedMonitor
+        }
       }
+
+      const appWindow = getCurrentWebviewWindow()
+
+      const scaleFactor = await appWindow.scaleFactor()
+
+      const { x, y } = cursorPoint.toLogical(scaleFactor)
+
+      cachedMonitor = await monitorFromPoint(x, y)
+
+      return cachedMonitor
+    } catch {
+      return null
     }
-
-    const appWindow = getCurrentWebviewWindow()
-
-    const scaleFactor = await appWindow.scaleFactor()
-
-    const { x, y } = cursorPoint.toLogical(scaleFactor)
-
-    cachedMonitor = await monitorFromPoint(x, y)
-
-    return cachedMonitor
   }
 }
 

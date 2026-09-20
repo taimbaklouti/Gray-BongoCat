@@ -19,9 +19,17 @@ pub fn run() {
         .setup(|app| {
             let app_handle = app.handle();
 
-            let main_window = app.get_webview_window(MAIN_WINDOW_LABEL).unwrap();
+            let Some(main_window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+                eprintln!("BongoCat: main window not found, skipping setup");
 
-            let preference_window = app.get_webview_window(PREFERENCE_WINDOW_LABEL).unwrap();
+                return Ok(());
+            };
+
+            let Some(preference_window) = app.get_webview_window(PREFERENCE_WINDOW_LABEL) else {
+                eprintln!("BongoCat: preference window not found, skipping setup");
+
+                return Ok(());
+            };
 
             setup::default(&app_handle, main_window.clone(), preference_window.clone());
 
@@ -50,6 +58,13 @@ pub fn run() {
             tauri_plugin_log::Builder::new()
                 .timezone_strategy(tauri_plugin_log::TimezoneStrategy::UseLocal)
                 .filter(|metadata| !metadata.target().contains("gilrs"))
+                // Console masquée en release Windows (windows_subsystem) :
+                // les logs restent consultables dans le dossier de logs OS.
+                .target(tauri_plugin_log::Target::new(
+                    tauri_plugin_log::TargetKind::LogDir {
+                        file_name: Some("BongoCat".into()),
+                    },
+                ))
                 .build(),
         )
         .plugin(tauri_plugin_autostart::init(

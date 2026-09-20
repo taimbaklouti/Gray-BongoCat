@@ -61,7 +61,8 @@ export const useCatStore = defineStore('cat', () => {
   const window = reactive<CatStore['window']>({
     visible: true,
     passThrough: false,
-    alwaysOnTop: false,
+    // Le chat démarre toujours au premier plan par défaut.
+    alwaysOnTop: true,
     scale: 100,
     opacity: 100,
     radius: 0,
@@ -70,19 +71,38 @@ export const useCatStore = defineStore('cat', () => {
     keepInScreen: true,
   })
 
+  const sanitize = () => {
+    const finiteOr = (value: number, fallback: number) => Number.isFinite(value) ? value : fallback
+
+    window.scale = Math.min(500, Math.max(10, finiteOr(window.scale, 100)))
+    window.opacity = Math.min(100, Math.max(0, finiteOr(window.opacity, 100)))
+    window.radius = Math.min(100, Math.max(0, finiteOr(window.radius, 0)))
+    window.hideOnHoverDelay = Math.max(0, finiteOr(window.hideOnHoverDelay, 0))
+    model.autoReleaseDelay = Math.max(0, finiteOr(model.autoReleaseDelay, 3))
+    model.maxFPS = Math.min(240, Math.max(1, finiteOr(model.maxFPS, 60)))
+  }
+
   const init = () => {
-    if (migrated.value) return
+    if (!migrated.value) {
+      model.mirror = mirrorMode.value
+      model.mouseMirror = mouseMirror.value
 
-    model.mirror = mirrorMode.value
-    model.mouseMirror = mouseMirror.value
+      window.visible = true
+      window.passThrough = penetrable.value
+      window.alwaysOnTop = alwaysOnTop.value
+      window.scale = scale.value
+      window.opacity = opacity.value
 
-    window.visible = true
-    window.passThrough = penetrable.value
-    window.alwaysOnTop = alwaysOnTop.value
-    window.scale = scale.value
-    window.opacity = opacity.value
+      migrated.value = true
+    }
 
-    migrated.value = true
+    // Valeurs persistées potentiellement corrompues (pinia JSON édité à
+    // la main, ancienne version) : on assainit sans écraser les choix valides.
+    sanitize()
+
+    // Toujours au premier plan à chaque lancement, quelle que soit la
+    // valeur persistée (l'option reste modifiable pendant la session).
+    window.alwaysOnTop = true
   }
 
   return {

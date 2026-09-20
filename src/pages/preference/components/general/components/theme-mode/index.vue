@@ -20,21 +20,20 @@ const options = computed<Array<{ label: string, value: Theme }>>(() => [
 ])
 
 onMounted(() => {
-  appWindow.onThemeChanged(async ({ payload }) => {
+  // Écouteur conservé mais sans effet : le thème est verrouillé en clair.
+  appWindow.onThemeChanged(async () => {
     if (generalStore.appearance.theme !== 'auto') return
 
-    generalStore.appearance.isDark = payload === 'dark'
+    generalStore.appearance.isDark = false
   })
 })
 
-watch(() => generalStore.appearance.theme, async (value) => {
-  let nextTheme = value === 'auto' ? null : value
+watch(() => generalStore.appearance.theme, async () => {
+  // Le thème clair est forcé : on applique toujours "light" côté OS,
+  // quelle que soit la valeur sauvegardée (auto/dark compris).
+  await appWindow.setTheme('light')
 
-  await appWindow.setTheme(nextTheme)
-
-  nextTheme = nextTheme ?? (await appWindow.theme())
-
-  generalStore.appearance.isDark = nextTheme === 'dark'
+  generalStore.appearance.isDark = false
 }, { immediate: true })
 
 watch(() => generalStore.appearance.isDark, (value) => {
