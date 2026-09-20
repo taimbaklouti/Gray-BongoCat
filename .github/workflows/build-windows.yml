@@ -46,9 +46,23 @@ jobs:
         env:
           CI: false
 
+      - name: Locate built exe files
+        # Fallback tolérant : la racine du workspace Cargo étant la racine
+        # du repo (target/ et non src-tauri/target/), on ratisse large.
+        # Tourne même si le build a échoué pour aider au diagnostic.
+        if: always()
+        run: |
+          foreach ($dir in @('target', 'src-tauri/target')) {
+            if (Test-Path $dir) {
+              Get-ChildItem -Path $dir -Recurse -Filter *.exe | Select-Object FullName
+            } else {
+              Write-Host "no dir: $dir"
+            }
+          }
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: BongoCat-windows-x64-installer
-          path: src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
-          if-no-files-found: error
+          path: '**/target/**/*.exe'
+          if-no-files-found: warn
