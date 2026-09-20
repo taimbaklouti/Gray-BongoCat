@@ -41,8 +41,11 @@ jobs:
 
       # Le fork n'a pas de clé de signature d'updater : on la désactive
       # via un override de config au lieu de la retirer de tauri.conf.json.
+      # Note Windows (pwsh) : guillemets doubles échappés ici — des quotes
+      # simples seraient mangées par PowerShell et le JSON arriverait nu
+      # ({bundle:...}) au CLI, qui rejette avec "key must be a string".
       - name: Build the app (Windows x64)
-        run: pnpm tauri build --target x86_64-pc-windows-msvc --config '{"bundle":{"createUpdaterArtifacts":false}}'
+        run: pnpm tauri build --target x86_64-pc-windows-msvc --config "{\"bundle\":{\"createUpdaterArtifacts\":false}}"
         env:
           CI: false
 
