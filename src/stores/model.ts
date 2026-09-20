@@ -1,6 +1,7 @@
 import type { ExpressionInfo, MotionInfo } from 'easy-live2d'
 
 import { resolveResource } from '@tauri-apps/api/path'
+import { exists } from '@tauri-apps/plugin-fs'
 import { filter, find } from 'es-toolkit/compat'
 import { nanoid } from 'nanoid'
 import { defineStore } from 'pinia'
@@ -49,6 +50,13 @@ export const useModelStore = defineStore('model', () => {
     const matched = find(nextModels, { id: currentModel.value?.id })
 
     currentModel.value = matched ?? nextModels[0]
+
+    // D3 : le modèle restauré du store peut pointer vers un dossier supprimé
+    // du disque (custom désinstallé) → bascule explicite sur `standard` pour
+    // garantir un chat visible au 1er lancement.
+    if (currentModel.value && !await exists(currentModel.value.path).catch(() => false)) {
+      currentModel.value = find(nextModels, { mode: 'standard', isPreset: true }) ?? nextModels[0]
+    }
 
     models.value = nextModels
   }

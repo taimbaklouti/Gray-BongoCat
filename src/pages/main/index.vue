@@ -43,6 +43,17 @@ const { stickActive } = useGamepad()
 
 onMounted(startListening)
 
+onMounted(async () => {
+  // D3 : le watcher `immediate` a pu tenter le chargement avant le montage
+  // du canvas (`initApp` lève alors "not found", scène vide définitive).
+  // Si aucun sprite n'existe alors qu'un modèle est sélectionné, on rejoue
+  // le chargement une fois. Sans course, `live2d.model` est déjà défini
+  // (ou un chargement est en cours et sa garde anti-race tranche).
+  if (modelStore.currentModel && !live2d.model) {
+    await handleLoad()
+  }
+})
+
 onUnmounted(handleDestroy)
 
 const debouncedResize = useDebounceFn(async () => {

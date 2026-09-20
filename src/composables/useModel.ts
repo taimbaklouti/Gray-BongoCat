@@ -1,8 +1,10 @@
 import type { PhysicalPosition } from '@tauri-apps/api/dpi'
 
 import { LogicalSize } from '@tauri-apps/api/dpi'
-import { resolveResource, sep } from '@tauri-apps/api/path'
+import { sep } from '@tauri-apps/api/path'
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { exists } from '@tauri-apps/plugin-fs'
+import { error as logError } from '@tauri-apps/plugin-log'
 import { message } from 'antdv-next'
 import { isNil, round } from 'es-toolkit'
 import { findKey, nth } from 'es-toolkit/compat'
@@ -104,7 +106,13 @@ export function useModel() {
     try {
       const { path } = model
 
-      await resolveResource(path)
+      // D2 : `path` est déjà absolu (construit via `resolveResource` dans le
+      // store). Le re-résoudre via `resolveResource` est invalide (l'API
+      // attend un chemin relatif "comme dans bundle.resources") et peut lever
+      // sur Windows installé → on vérifie l'existence réelle à la place.
+      if (!await exists(path).catch(() => false)) {
+        throw new Error(`Dossier du modèle introuvable : ${path}`)
+      }
 
       const { width, height, motions, expressions } = await live2d.load(path)
 
@@ -151,6 +159,9 @@ export function useModel() {
 
         return
       }
+
+      // Log fichier (diagnostic Windows sans devtools, lisible via View Log).
+      logError(`[useModel] échec chargement modèle ${modelId} (${model.path}) : ${String(error)}`).catch(() => {})
 
       message.error(String(error))
 

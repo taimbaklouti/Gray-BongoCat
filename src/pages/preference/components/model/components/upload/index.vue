@@ -9,7 +9,7 @@ import { nanoid } from 'nanoid'
 import { onMounted, ref, useTemplateRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
-import type { ModelMode } from '@/stores/model'
+import type { Model, ModelMode } from '@/stores/model'
 
 import { INVOKE_KEY } from '@/constants'
 import { useModelStore } from '@/stores/model'
@@ -61,6 +61,14 @@ watch(selectPaths, async (paths) => {
     try {
       const id = nanoid()
 
+      // (a) refus strict : un dossier sans `.model3.json` n'est pas un modèle
+      // valide — on échoue AVANT la copie, rien n'est ajouté au store.
+      const entries = await readDir(fromPath)
+
+      if (!entries.some(entry => entry.name.endsWith('.model3.json'))) {
+        throw new Error(`Dossier invalide (aucun .model3.json) : ${fromPath}`)
+      }
+
       let mode: ModelMode = 'standard'
 
       const files = await readDir(join(fromPath, 'resources', 'right-keys')).catch(() => [])
@@ -82,18 +90,27 @@ watch(selectPaths, async (paths) => {
         toPath,
       })
 
-      modelStore.models.push({
+      // (b) auto-activation immédiate : la fenêtre main recharge via son
+      // watcher `currentModel` (store synchronisé inter-fenêtres).
+      const nextModel: Model = {
         id,
         path: toPath,
         mode,
         isPreset: false,
-      })
+      }
+
+      modelStore.modelReady = false
+      modelStore.models.push(nextModel)
+      modelStore.currentModel = nextModel
 
       message.success(t('pages.preference.model.hints.importSuccess'))
     } catch (error) {
       message.error(String(error))
     }
   }
+
+  // Permet de réimporter les mêmes dossiers plus tard (même sélection).
+  selectPaths.value = []
 })
 </script>
 
