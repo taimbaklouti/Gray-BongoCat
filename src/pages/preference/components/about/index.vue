@@ -13,8 +13,12 @@ import ProListItem from '@/components/pro-list-item/index.vue'
 import ProList from '@/components/pro-list/index.vue'
 import { GITHUB_LINK, LISTEN_KEY } from '@/constants'
 import { useAppStore } from '@/stores/app'
+import { useCatStore } from '@/stores/cat'
+import { useModelStore } from '@/stores/model'
 
 const appStore = useAppStore()
+const modelStore = useModelStore()
+const catStore = useCatStore()
 const logDir = ref('')
 const { t } = useI18n()
 
@@ -27,6 +31,10 @@ function handleUpdate() {
 }
 
 async function copyInfo() {
+  // Note : les stores sont synchronisés inter-fenêtres, donc l'état du
+  // modèle affiché ici reflète la fenêtre main. (`live2d.model` n'est PAS
+  // inclus : le singleton ne charge jamais dans cette webview, il serait
+  // toujours null et donc trompeur.)
   const info = {
     appName: appStore.name,
     appVersion: appStore.version,
@@ -34,6 +42,14 @@ async function copyInfo() {
     platform: platform(),
     platformArch: arch(),
     platformVersion: version(),
+    modelMode: modelStore.currentModel?.mode ?? null,
+    modelPreset: modelStore.currentModel?.isPreset ?? null,
+    modelReady: modelStore.modelReady,
+    modelCount: modelStore.models.length,
+    windowVisible: catStore.window.visible,
+    windowOpacity: catStore.window.opacity,
+    windowScale: catStore.window.scale,
+    hideOnHover: catStore.window.hideOnHover,
   }
 
   await writeText(JSON.stringify(info, null, 2))
